@@ -21,6 +21,12 @@
                       th:text="${itemForm.description}"></textarea>
         </div>
 
+        <div class="col-md-4">
+            <label class="form-label" for="price">Price</label>
+            <input class="form-control" id="price" min="0" name="price" required step="0.01"
+                   th:value="${itemForm.price}" type="number">
+        </div>
+
         <div class="col-12 d-flex gap-2">
             <button class="btn btn-primary" th:text="${submitLabel}" type="submit">Save</button>
             <a class="btn btn-outline-secondary" th:href="@{/item}">Cancel</a>

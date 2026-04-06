@@ -1,19 +1,22 @@
 package org.example.app.item;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 @Table("item")
-public class Item {
+public record Item(
+    @Id Long id,
+    String name,
+    String description,
+    BigDecimal price
+) {
+    public static Item of(String name, String description, BigDecimal price) {
+        return new Item(null, name, description, price);
+    }
 
-    @Id
-    private Long id;
-    private String name;
-    private String description;
+    public Item withDetails(String name, String description, BigDecimal price) {
+        return new Item(id, name, description, price);
+    }
 }

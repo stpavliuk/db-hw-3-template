@@ -2,5 +2,6 @@ CREATE TABLE item
 (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(100) NOT NULL,
-    description VARCHAR(500) NOT NULL DEFAULT ''
+    description VARCHAR(500) NOT NULL DEFAULT '',
+    price       DECIMAL(10, 2) NOT NULL DEFAULT 0.00
 );

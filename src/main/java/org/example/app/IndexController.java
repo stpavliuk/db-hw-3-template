@@ -10,9 +10,4 @@ public class IndexController {
     public String homepage() {
         return "redirect:/item";
     }
-
-    @GetMapping("/flight")
-    public String legacyFlightPage() {
-        return "redirect:/item";
-    }
 }

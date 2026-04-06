@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 
@@ -27,8 +29,11 @@ public class ItemController {
     public String listItems(Model model) {
         var items = new ArrayList<Item>();
         itemRepository.findAll().forEach(items::add);
-        items.sort(Comparator.comparing(Item::getId));
+        items.sort(Comparator.comparing(Item::id));
+
         model.addAttribute("items", items);
+        model.addAttribute("priceSummary", PriceSummary.from(itemRepository.pricingSummary()));
+
         return "item/list";
     }
 
@@ -47,13 +52,15 @@ public class ItemController {
     @PostMapping("/create")
     public String createItem(@RequestParam(required = false) String name,
                              @RequestParam(required = false) String description,
+                             @RequestParam(required = false) String price,
                              RedirectAttributes redirectAttributes) {
-        var form = ItemForm.from(name, description);
-        if (!form.isValid()) {
-            return redirectToFormError("create", redirectAttributes, "Name is required.", form);
+        var form = ItemForm.from(name, description, price);
+        var validationError = form.validationError();
+        if (validationError != null) {
+            return redirectToFormError("create", redirectAttributes, validationError, form);
         }
 
-        itemRepository.save(new Item(null, form.getName(), form.getDescription()));
+        itemRepository.save(Item.of(form.name(), form.description(), form.priceValue()));
         redirectAttributes.addFlashAttribute("successMessage", "Item created.");
         return "redirect:/item";
     }
@@ -67,7 +74,7 @@ public class ItemController {
         }
 
         if (!model.containsAttribute("itemForm")) {
-            model.addAttribute("itemForm", ItemForm.from(item.getName(), item.getDescription()));
+            model.addAttribute("itemForm", ItemForm.from(item));
         }
 
         model.addAttribute("pageTitle", "Edit Item");
@@ -80,6 +87,7 @@ public class ItemController {
     public String updateItem(@PathVariable Long id,
                              @RequestParam(required = false) String name,
                              @RequestParam(required = false) String description,
+                             @RequestParam(required = false) String price,
                              RedirectAttributes redirectAttributes) {
         var item = itemRepository.findById(id).orElse(null);
         if (item == null) {
@@ -87,14 +95,13 @@ public class ItemController {
             return "redirect:/item";
         }
 
-        var form = ItemForm.from(name, description);
-        if (!form.isValid()) {
-            return redirectToFormError(id + "/edit", redirectAttributes, "Name is required.", form);
+        var form = ItemForm.from(name, description, price);
+        var validationError = form.validationError();
+        if (validationError != null) {
+            return redirectToFormError(id + "/edit", redirectAttributes, validationError, form);
         }
 
-        item.setName(form.getName());
-        item.setDescription(form.getDescription());
-        itemRepository.save(item);
+        itemRepository.save(item.withDetails(form.name(), form.description(), form.priceValue()));
         redirectAttributes.addFlashAttribute("successMessage", "Item updated.");
         return "redirect:/item";
     }
@@ -120,37 +127,68 @@ public class ItemController {
         return "redirect:/item/" + pathSuffix;
     }
 
-    public static final class ItemForm {
-        private final String name;
-        private final String description;
-
-        private ItemForm(String name, String description) {
-            this.name = name;
-            this.description = description;
+    public record ItemForm(String name, String description, String price) {
+        public ItemForm {
+            name = normalize(name);
+            description = normalize(description);
+            price = normalize(price);
         }
 
         public static ItemForm empty() {
-            return new ItemForm("", "");
+            return new ItemForm("", "", "0.00");
         }
 
-        public static ItemForm from(String name, String description) {
-            return new ItemForm(normalize(name), normalize(description));
+        public static ItemForm from(String name, String description, String price) {
+            return new ItemForm(name, description, price);
         }
 
-        public boolean isValid() {
-            return StringUtils.hasText(name);
+        public static ItemForm from(Item item) {
+            return new ItemForm(item.name(), item.description(), item.price().toPlainString());
         }
 
-        public String getName() {
-            return name;
+        public String validationError() {
+            if (!StringUtils.hasText(name)) {
+                return "Name is required.";
+            }
+            if (!StringUtils.hasText(price)) {
+                return "Price is required.";
+            }
+
+            try {
+                var parsedPrice = new BigDecimal(price);
+                if (parsedPrice.scale() > 2) {
+                    return "Price must have at most 2 decimal places.";
+                }
+                if (parsedPrice.compareTo(BigDecimal.ZERO) < 0) {
+                    return "Price must be non-negative.";
+                }
+            } catch (NumberFormatException exception) {
+                return "Price must be a valid number.";
+            }
+
+            return null;
         }
 
-        public String getDescription() {
-            return description;
+        public BigDecimal priceValue() {
+            return new BigDecimal(price).setScale(2);
         }
 
         private static String normalize(String value) {
             return value == null ? "" : value.trim();
+        }
+    }
+
+    public record PriceSummary(BigDecimal average, BigDecimal max, BigDecimal min) {
+        public static PriceSummary from(ItemRepository.PriceSummaryRow projection) {
+            return new PriceSummary(
+                normalize(projection.averagePrice()),
+                normalize(projection.maxPrice()),
+                normalize(projection.minPrice())
+            );
+        }
+
+        private static BigDecimal normalize(BigDecimal value) {
+            return value.setScale(2, RoundingMode.HALF_UP);
         }
     }
 }
