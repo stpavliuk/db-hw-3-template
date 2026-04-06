@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html th:replace="~{common/layout :: layout(~{::title}, ~{::header}, ~{::section})}" lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Items</title>
+</head>
+<body>
+<header>Items</header>
+
+<section>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p class="text-body-secondary mb-0">Rename this entity to fit your domain.</p>
+        <a class="btn btn-primary" th:href="@{/item/create}">Create item</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+            <thead>
+            <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Name</th>
+                <th scope="col">Description</th>
+                <th class="text-end" scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(items)}">
+                <td class="text-center text-body-secondary" colspan="4">No items yet.</td>
+            </tr>
+            <tr th:each="item : ${items}">
+                <td th:text="${item.id}">1</td>
+                <td class="fw-semibold" th:text="${item.name}">Sample item</td>
+                <td th:text="${item.description}">Description</td>
+                <td>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a class="btn btn-sm btn-outline-secondary" th:href="@{/item/{id}/edit(id=${item.id})}">Edit</a>
+                        <form method="post" th:action="@{/item/{id}/delete(id=${item.id})}">
+                            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

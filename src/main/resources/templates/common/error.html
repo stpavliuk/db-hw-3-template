@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html th:replace="~{common/layout :: layout(~{::title}, ~{::header}, ~{::section})}" lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Error</title>
+</head>
+<body>
+<header>Request Error</header>
+
+<section class="text-center">
+    <h3 class="mb-4" th:text="${errorMessage ?: 'Something went wrong.'}">Something went wrong.</h3>
+    <a class="btn btn-primary" href="/">Go to Home</a>
+</section>
+</body>
+</html>
