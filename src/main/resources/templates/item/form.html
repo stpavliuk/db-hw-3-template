@@ -9,22 +9,25 @@
 <header th:text="${pageTitle}">Item Form</header>
 
 <section>
-    <form class="row g-3" method="post" th:action="${formAction}">
+    <form class="row g-3" method="post" th:action="${formAction}" th:object="${itemForm}">
         <div class="col-12">
             <label class="form-label" for="name">Name</label>
-            <input class="form-control" id="name" name="name" required th:value="${itemForm.name}" type="text">
+            <input class="form-control" id="name" required th:field="*{name}" th:classappend="${#fields.hasErrors('name')} ? ' is-invalid'" type="text">
+            <div class="invalid-feedback" th:errors="*{name}">Name error</div>
         </div>
 
         <div class="col-12">
             <label class="form-label" for="description">Description</label>
-            <textarea class="form-control" id="description" name="description" rows="5"
-                      th:text="${itemForm.description}"></textarea>
+            <textarea class="form-control" id="description" rows="5"
+                      th:field="*{description}" th:classappend="${#fields.hasErrors('description')} ? ' is-invalid'"></textarea>
+            <div class="invalid-feedback" th:errors="*{description}">Description error</div>
         </div>
 
         <div class="col-md-4">
             <label class="form-label" for="price">Price</label>
-            <input class="form-control" id="price" min="0" name="price" required step="0.01"
-                   th:value="${itemForm.price}" type="number">
+            <input class="form-control" id="price" min="0" required step="0.01"
+                   th:field="*{price}" th:classappend="${#fields.hasErrors('price')} ? ' is-invalid'" type="number">
+            <div class="invalid-feedback" th:errors="*{price}">Price error</div>
         </div>
 
         <div class="col-12 d-flex gap-2">

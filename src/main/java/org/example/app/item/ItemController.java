@@ -1,13 +1,11 @@
 package org.example.app.item;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
@@ -43,24 +41,21 @@ public class ItemController {
             model.addAttribute("itemForm", ItemForm.empty());
         }
 
-        model.addAttribute("pageTitle", "Create Item");
-        model.addAttribute("formAction", "/item/create");
-        model.addAttribute("submitLabel", "Create item");
+        populateFormPage(model, "Create Item", "/item/create", "Create item");
         return "item/form";
     }
 
     @PostMapping("/create")
-    public String createItem(@RequestParam(required = false) String name,
-                             @RequestParam(required = false) String description,
-                             @RequestParam(required = false) String price,
+    public String createItem(@Valid @ModelAttribute("itemForm") ItemForm form,
+                             BindingResult bindingResult,
+                             Model model,
                              RedirectAttributes redirectAttributes) {
-        var form = ItemForm.from(name, description, price);
-        var validationError = form.validationError();
-        if (validationError != null) {
-            return redirectToFormError("create", redirectAttributes, validationError, form);
+        if (bindingResult.hasErrors()) {
+            populateFormPage(model, "Create Item", "/item/create", "Create item");
+            return "item/form";
         }
 
-        itemRepository.save(Item.of(form.name(), form.description(), form.priceValue()));
+        itemRepository.save(Item.of(form.nameValue(), form.descriptionValue(), form.priceValue()));
         redirectAttributes.addFlashAttribute("successMessage", "Item created.");
         return "redirect:/item";
     }
@@ -77,17 +72,15 @@ public class ItemController {
             model.addAttribute("itemForm", ItemForm.from(item));
         }
 
-        model.addAttribute("pageTitle", "Edit Item");
-        model.addAttribute("formAction", "/item/" + id + "/edit");
-        model.addAttribute("submitLabel", "Save changes");
+        populateFormPage(model, "Edit Item", "/item/" + id + "/edit", "Save changes");
         return "item/form";
     }
 
     @PostMapping("/{id}/edit")
     public String updateItem(@PathVariable Long id,
-                             @RequestParam(required = false) String name,
-                             @RequestParam(required = false) String description,
-                             @RequestParam(required = false) String price,
+                             @Valid @ModelAttribute("itemForm") ItemForm form,
+                             BindingResult bindingResult,
+                             Model model,
                              RedirectAttributes redirectAttributes) {
         var item = itemRepository.findById(id).orElse(null);
         if (item == null) {
@@ -95,13 +88,12 @@ public class ItemController {
             return "redirect:/item";
         }
 
-        var form = ItemForm.from(name, description, price);
-        var validationError = form.validationError();
-        if (validationError != null) {
-            return redirectToFormError(id + "/edit", redirectAttributes, validationError, form);
+        if (bindingResult.hasErrors()) {
+            populateFormPage(model, "Edit Item", "/item/" + id + "/edit", "Save changes");
+            return "item/form";
         }
 
-        itemRepository.save(item.withDetails(form.name(), form.description(), form.priceValue()));
+        itemRepository.save(item.withDetails(form.nameValue(), form.descriptionValue(), form.priceValue()));
         redirectAttributes.addFlashAttribute("successMessage", "Item updated.");
         return "redirect:/item";
     }
@@ -118,63 +110,44 @@ public class ItemController {
         return "redirect:/item";
     }
 
-    private String redirectToFormError(String pathSuffix,
-                                       RedirectAttributes redirectAttributes,
-                                       String message,
-                                       ItemForm form) {
-        redirectAttributes.addFlashAttribute("errorMessage", message);
-        redirectAttributes.addFlashAttribute("itemForm", form);
-        return "redirect:/item/" + pathSuffix;
+    private void populateFormPage(Model model,
+                                  String pageTitle,
+                                  String formAction,
+                                  String submitLabel) {
+        model.addAttribute("pageTitle", pageTitle);
+        model.addAttribute("formAction", formAction);
+        model.addAttribute("submitLabel", submitLabel);
     }
 
-    public record ItemForm(String name, String description, String price) {
-        public ItemForm {
-            name = normalize(name);
-            description = normalize(description);
-            price = normalize(price);
-        }
-
+    public record ItemForm(
+        @NotBlank(message = "Name is required.")
+        @Size(max = 100, message = "Name must be at most 100 characters.")
+        String name,
+        @Size(max = 500, message = "Description must be at most 500 characters.")
+        String description,
+        @NotNull(message = "Price is required.")
+        @DecimalMin(value = "0.00", message = "Price must be non-negative.")
+        @Digits(integer = 8, fraction = 2, message = "Price must have at most 2 decimal places.")
+        BigDecimal price
+    ) {
         public static ItemForm empty() {
-            return new ItemForm("", "", "0.00");
-        }
-
-        public static ItemForm from(String name, String description, String price) {
-            return new ItemForm(name, description, price);
+            return new ItemForm("", "", null);
         }
 
         public static ItemForm from(Item item) {
-            return new ItemForm(item.name(), item.description(), item.price().toPlainString());
-        }
-
-        public String validationError() {
-            if (!StringUtils.hasText(name)) {
-                return "Name is required.";
-            }
-            if (!StringUtils.hasText(price)) {
-                return "Price is required.";
-            }
-
-            try {
-                var parsedPrice = new BigDecimal(price);
-                if (parsedPrice.scale() > 2) {
-                    return "Price must have at most 2 decimal places.";
-                }
-                if (parsedPrice.compareTo(BigDecimal.ZERO) < 0) {
-                    return "Price must be non-negative.";
-                }
-            } catch (NumberFormatException exception) {
-                return "Price must be a valid number.";
-            }
-
-            return null;
+            return new ItemForm(item.name(), item.description(), item.price());
         }
 
         public BigDecimal priceValue() {
-            return new BigDecimal(price).setScale(2);
+            return price.setScale(2, RoundingMode.HALF_UP);
         }
 
-        private static String normalize(String value) {
-            return value == null ? "" : value.trim();
+        public String nameValue() {
+            return name.trim();
+        }
+
+        public String descriptionValue() {
+            return description == null ? "" : description.trim();
         }
     }
 
