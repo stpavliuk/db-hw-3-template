@@ -17,7 +17,6 @@ Use it to:
 - Spring Boot
 - Spring Data JDBC
 - Thymeleaf
-- Liquibase
 - MySQL
 
 ## Project Structure
@@ -27,41 +26,18 @@ Use it to:
 - [ItemController.java](src/main/java/org/example/app/item/ItemController.java): CRUD controller
 - [Item.java](src/main/java/org/example/app/item/Item.java): entity
 - [ItemRepository.java](src/main/java/org/example/app/item/ItemRepository.java): repository
-- [0_schema.sql](src/main/resources/db/changelog/0_schema.sql): minimal schema
-- [1_data.sql](src/main/resources/db/changelog/1_data.sql): small seed dataset
+- [schema.sql](src/main/resources/schema.sql): minimal schema
+- [data.sql](src/main/resources/data.sql): small seed dataset
 - [templates/item](src/main/resources/templates/item): Thymeleaf pages
 
 ## Local Setup
 
-Update `docker-compose.yml` with the database name you want to use:
-
-```yaml
-services:
-  database:
-    environment:
-      MYSQL_DATABASE: your_database_name
-```
-
-Start the database:
-
-```bash
-docker compose up -d
-```
-
 Update `src/main/resources/application.properties` with matching values:
 
 ```properties
-spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3307/your_database_name}
-spring.datasource.username=${DB_USERNAME:root}
-spring.datasource.password=${DB_PASSWORD:secret}
-```
-
-Or set environment variables:
-
-```bash
-export DB_URL=jdbc:mysql://localhost:3307/your_database_name
-export DB_USERNAME=root
-export DB_PASSWORD=secret
+spring.datasource.url=jdbc:mysql://localhost:3307/<your_database_name>?createDatabaseIfNotExist=true
+spring.datasource.username=root
+spring.datasource.password=secret
 ```
 
 Run the project:
@@ -70,15 +46,37 @@ Run the project:
 ./gradlew bootRun
 ```
 
+Or
+
+1. Open the project folder in IntelliJ IDEA
+2. Go to the *File -> Project Structure -> Project* and verify that you're using **SDK 21+**
+3. Open *Settings -> Build, Execution, Deployment -> Build Tools -> Gradle* select **Gradle JVM** to be **Project SDK**
+4. And finally run the project:
+  - Go to the `org/example/app/TemplateApplication.java` 
+  - Click the Run button :)
+
 Open:
 
 ```text
 http://localhost:8080
 ```
 
+> [!NOTE]
+> The application will create a new MySQL docker container automatically, you just have to have the `docker` and `docker-compose` installed on the machine.
+> By default, application restart will restart the container and wipe all your data. Overall, it should not be a problem, since you'll have your schema and data (re)populated automatically through [schema.sql](src/main/resources/schema.sql) and [data.sql](src/main/resources/data.sql).
+
+However, if you still want to persist your data between sessions, uncomment these lines in [docker-compose.yml](./docker-compose.yml)
+```
+  # Uncomment to enable persistence between sessions
+  # 
+  # volumes:
+  #   - ./data/mysql:/var/lib/mysql
+```
+With the next restart, MySQL will persist the database files in the `data/mysql` folder.
+
 ## How To Use It
 
 1. Rename `Item` to the first real entity in the homework domain.
-2. Replace the `item` table in Liquibase with the real schema.
+2. Replace the `item` table in `schema.sql` with the real schema.
 3. Expand from the existing controller, repository, and templates.
-4. Remove or adapt the sample records in `1_data.sql`.
+4. Remove or adapt the sample records in `data.sql`.

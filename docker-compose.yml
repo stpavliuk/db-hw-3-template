@@ -2,10 +2,11 @@ services:
   database:
     image: mysql:lts
     container_name: template-app-mysql
-    volumes:
-      - ./data/mysql:/var/lib/mysql
+    # Uncomment to enable persistence between sessions
+    # 
+    # volumes:
+    #   - ./data/mysql:/var/lib/mysql
     ports:
       - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: template_app
